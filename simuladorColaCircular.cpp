@@ -6,6 +6,8 @@
 #include <unistd.h>
 #include <fstream>
 #include <chrono>
+#include <string>
+#include <string.h>
 
 using namespace std;
 
@@ -69,25 +71,29 @@ public:
         }
     }
 
+
+
     void agregarElemento(int item) {
-        unique_lock<mutex> lck(mtx);
-        cv.wait(lck, [this] { return numElementos < numSize; });
-        if (numElementos == numSize) {
-            archivo << "Se duplico la capacidad de la cola y ahora es:" << numSize << endl;
+        unique_lock<mutex> lck(mtx); // wrapper del mutex, se desbloquea al salir del scope
+        cv.wait(lck, [this] { return numElementos < numSize; }); // lock del mutex y espera
+        if (numElementos >= numSize) {
             duplicarCapacidad();
+            archivo << "Se duplico la capacidad de la cola y ahora es:" << numSize << endl;
+            cout << "Se duplico la capacidad de la cola y ahora es:" << numSize << endl;
         }
         cola[final] = item;
         final = (final + 1) % numSize;
         numElementos++;
-            cv.notify_all();
+        cv.notify_all();
     }
 
     int extraerElemento() {
-        unique_lock<mutex> lck(mtx);
-        if (cv.wait_for(lck, tiempoEspera, [this] { return numElementos > 0; })) {
+        unique_lock<mutex> lck(mtx); // wrapper del mutex, se desbloquea al salir del scope
+        if (cv.wait_for(lck, tiempoEspera, [this] { return numElementos > 0; })) { // lock del mutex y espera
             if (numElementos <= numSize / 4) {
-                archivo << "Se redujo a la mitad la capacidad de la cola y ahora es:" << numSize << endl;
                 dividirCola();
+                archivo << "Se redujo a la mitad la capacidad de la cola y ahora es:" << numSize << endl;
+                cout << "Se redujo a la mitad la capacidad de la cola y ahora es:" << numSize << endl;
             }
             int item = cola[frente];
             frente = (frente + 1) % numSize;
@@ -107,19 +113,46 @@ int main(int argc, char **argv) {
 
     int p = 0, c = 0, s = 0, t = 0; // num productores, num consumidores, tamano inicial cola, tiempo de espera
     for (int i = 1; i + 1 < argc; i++) {
-        if (argv[i] == "-p") {
+        if (strcmp(argv[i], "-p") == 0) {
             p = atoi(argv[i + 1]);
-        } else if (argv[i] == "-c") {
+        } else if (strcmp(argv[i], "-c") == 0) {
             c = atoi(argv[i + 1]);
-        } else if (argv[i] == "-s") {
+        } else if (strcmp(argv[i], "-s") == 0) {
             s = atoi(argv[i + 1]);
-        } else if (argv[i] == "-t") {
+        } else if (strcmp(argv[i], "-t") == 0) {
             t = atoi(argv[i + 1]);
         }
     }
     if (p == 0 || c == 0 || s == 0 || t == 0) {
         cout << "Error en los argumentos" << endl;
         return 1;
+    }
+
+
+    Monitor monitor(s, t);
+
+    vector<thread> productores;
+    vector<thread> consumidores;
+
+    for (int i = 0; i < p; i++) {
+        productores.push_back(thread([&monitor] {
+                monitor.agregarElemento(12);
+            }));
+    }
+
+    this_thread::sleep_for(chrono::seconds(1));
+
+    for (int i = 0; i < c; i++) {
+        consumidores.push_back(thread([&monitor] {
+            int n = monitor.extraerElemento();
+            }));
+    }
+
+    for (int i = 0; i < p; i++) {
+        productores[i].join();
+    }
+    for (int i = 0; i < c; i++) {
+        consumidores[i].join();
     }
 
 

@@ -1,0 +1,3 @@
+capacidad inicial de la cola:10
+Se redujo a la mitad la capacidad de la cola y ahora es:5
+Se redujo a la mitad la capacidad de la cola y ahora es:2

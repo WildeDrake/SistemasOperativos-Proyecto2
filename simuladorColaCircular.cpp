@@ -76,7 +76,7 @@ public:
     void agregarElemento(int item) {
         unique_lock<mutex> lck(mtx); // wrapper del mutex, se desbloquea al salir del scope
         cv.wait(lck, [this] { return numElementos < numSize; }); // lock del mutex y espera
-        if (numElementos >= numSize) {
+        if (numElementos == numSize) {
             duplicarCapacidad();
             archivo << "Se duplico la capacidad de la cola y ahora es:" << numSize << endl;
             cout << "Se duplico la capacidad de la cola y ahora es:" << numSize << endl;

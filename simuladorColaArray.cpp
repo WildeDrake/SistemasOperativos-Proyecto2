@@ -1,19 +1,19 @@
 #include <iostream>
 #include <thread>
-#include <vector>
 #include <mutex>
 #include <condition_variable>
 #include <unistd.h>
 #include <fstream>
 #include <chrono>
 #include <string>
-#include <string.h>
+#include <cstring>
+#include <vector>
 
 using namespace std;
 
 class Monitor {
 private:
-    vector<int> cola;
+    int *cola;
     int numSize;
     int numElementos;
     int frente;
@@ -22,28 +22,28 @@ private:
     mutex mtx;
     condition_variable cv;
     ofstream archivo;
+
     void duplicarCapacidad() {
-        vector<int> colaDuplicada(numSize * 2);
-        for (int i = 0; i < numElementos; i++)
-        {
+        int *colaDuplicada = new int[numSize * 2];
+        for (int i = 0; i < numElementos; i++) {
             colaDuplicada[i] = cola[frente];
             frente = (frente + 1) % numSize;
         }
-        cola = move(colaDuplicada);
+        delete[] cola;
+        cola = colaDuplicada;
         numSize = numSize * 2;
         frente = 0;
         final = numElementos;
-
     }
 
     void dividirCola() {
-        vector<int> mediaCola(numSize / 2);
-        for (int i = 0; i < numElementos; i++)
-        {
+        int *mediaCola = new int[numSize / 2];
+        for (int i = 0; i < numElementos; i++) {
             mediaCola[i] = cola[frente];
             frente = (frente + 1) % numSize;
         }
-        cola = move(mediaCola);
+        delete[] cola;
+        cola = mediaCola;
         numSize = numSize / 2;
         frente = 0;
         final = numElementos;
@@ -55,36 +55,35 @@ public:
         frente = 0;
         final = 0;
         numSize = tamanoInicial;
-        cola.resize(tamanoInicial);
+        cola = new int[numSize];
         this->tiempoEspera = chrono::seconds(tiempoEspera);
         archivo.open("log.txt");
         if (archivo.is_open()) {
-            cout << "archivo abierto";
             archivo << "capacidad inicial de la cola:" << tamanoInicial << endl;
         } else {
-            cout << "error al abrir archivo";
+            cout << "error al abrir archivo\n";
         }
     }
+
     ~Monitor() {
         if (archivo.is_open()) {
             archivo.close();
         }
+        delete[] cola;
     }
-
-
 
     void agregarElemento(int item) {
         unique_lock<mutex> lck(mtx); // wrapper del mutex, se desbloquea al salir del scope
-        cv.wait(lck, [this] { return numElementos < numSize; }); // lock del mutex y espera
         if (numElementos == numSize) {
             duplicarCapacidad();
             archivo << "Se duplico la capacidad de la cola y ahora es:" << numSize << endl;
-            cout << "Se duplico la capacidad de la cola y ahora es:" << numSize << endl;
         }
+        cv.wait(lck, [this] { return numElementos < numSize; }); // lock del mutex y espera
         cola[final] = item;
         final = (final + 1) % numSize;
         numElementos++;
         cv.notify_all();
+        cout << numElementos << " " << numSize << "                                    \r" << flush;
     }
 
     int extraerElemento() {
@@ -93,20 +92,18 @@ public:
             if (numElementos <= numSize / 4) {
                 dividirCola();
                 archivo << "Se redujo a la mitad la capacidad de la cola y ahora es:" << numSize << endl;
-                cout << "Se redujo a la mitad la capacidad de la cola y ahora es:" << numSize << endl;
             }
             int item = cola[frente];
             frente = (frente + 1) % numSize;
             numElementos--;
             cv.notify_all();
-
+            cout << numElementos << " " << numSize << "                                    \r" << flush;
             return item;
         }
 
+        cout << numElementos << " " << numSize << "                                    \r" << flush;
         return -1;
     }
-
-
 };
 
 int main(int argc, char **argv) {
@@ -124,19 +121,18 @@ int main(int argc, char **argv) {
         }
     }
     if (p == 0 || c == 0 || s == 0 || t == 0) {
-        cout << "Error en los argumentos" << endl;
+        cout << "Error en los argumentos\n";
         return 1;
     }
 
-
     Monitor monitor(s, t);
 
-    vector<thread> productores;
-    vector<thread> consumidores;
+    vector <thread> productores;
+    vector <thread> consumidores;
 
     for (int i = 0; i < p; i++) {
         productores.push_back(thread([&monitor] {
-                monitor.agregarElemento(12);
+            monitor.agregarElemento(12);
             }));
     }
 
@@ -154,8 +150,6 @@ int main(int argc, char **argv) {
     for (int i = 0; i < c; i++) {
         consumidores[i].join();
     }
-
-
 
     return 0;
 }

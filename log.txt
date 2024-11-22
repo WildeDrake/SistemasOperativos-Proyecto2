@@ -1,0 +1,12 @@
+capacidad inicial de la cola:10
+Se duplico la capacidad de la cola y ahora es:20
+Se duplico la capacidad de la cola y ahora es:40
+Se duplico la capacidad de la cola y ahora es:80
+Se duplico la capacidad de la cola y ahora es:160
+Se duplico la capacidad de la cola y ahora es:320
+Se duplico la capacidad de la cola y ahora es:640
+Se duplico la capacidad de la cola y ahora es:1280
+Se duplico la capacidad de la cola y ahora es:2560
+Se duplico la capacidad de la cola y ahora es:5120
+Se duplico la capacidad de la cola y ahora es:10240
+Se redujo a la mitad la capacidad de la cola y ahora es:5120
